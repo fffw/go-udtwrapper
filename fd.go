@@ -14,6 +14,12 @@ import (
 
 // #cgo CFLAGS: -Wall
 // #cgo LDFLAGS: -lstdc++ -lm
+// #cgo LDFLAGS: -L ${SRCDIR}
+// #cgo darwin,amd64 LDFLAGS: -ludt_MAC_AMD64
+// #cgo darwin,i386 LDFLAGS: -ludt_MAC_IA32
+// #cgo linux,amd64 LDFLAGS: -ludt_LINUX_AMD64
+// #cgo linux,i386 LDFLAGS: -ludt_LINUX_IA32
+// #cgo linux,arm LDFLAGS: -ludt_LINUX_ARM
 //
 // #include "udt_c.h"
 // #include <errno.h>
