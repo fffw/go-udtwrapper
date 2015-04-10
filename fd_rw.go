@@ -6,9 +6,14 @@ import (
 	"unsafe"
 )
 
-// #cgo CFLAGS: -Wall
-// #cgo LDFLAGS: -lstdc++
-//
+// #cgo linux CFLAGS: -DLINUX
+// #cgo darwin CFLAGS: -DOSX
+// #cgo freebsd CFLAGS: -DBSD
+// #cgo windows CFLAGS: -DERROR_NO_WINDOWS_SUPPORT
+// #cgo i386 CFLAGS: -DIA32
+// #cgo amd64 CFLAGS: -DAMD64
+// #cgo CFLAGS: -Wall -finline-functions -O3 -fno-strict-aliasing -fvisibility=hidden
+// #cgo LDFLAGS: -lstdc++ -lm
 // #include "udt_c.h"
 // #include <errno.h>
 // #include <arpa/inet.h>

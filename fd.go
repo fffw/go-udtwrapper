@@ -12,15 +12,14 @@ import (
 	ctxgrp "github.com/jbenet/go-ctxgroup"
 )
 
-// #cgo CFLAGS: -Wall
+// #cgo linux CFLAGS: -DLINUX
+// #cgo darwin CFLAGS: -DOSX
+// #cgo freebsd CFLAGS: -DBSD
+// #cgo windows CFLAGS: -DERROR_NO_WINDOWS_SUPPORT
+// #cgo i386 CFLAGS: -DIA32
+// #cgo amd64 CFLAGS: -DAMD64
+// #cgo CFLAGS: -Wall -finline-functions -O3 -fno-strict-aliasing -fvisibility=hidden
 // #cgo LDFLAGS: -lstdc++ -lm
-// #cgo LDFLAGS: -L ${SRCDIR}
-// #cgo darwin,amd64 LDFLAGS: -ludt_MAC_AMD64
-// #cgo darwin,i386 LDFLAGS: -ludt_MAC_IA32
-// #cgo linux,amd64 LDFLAGS: -ludt_LINUX_AMD64
-// #cgo linux,i386 LDFLAGS: -ludt_LINUX_IA32
-// #cgo linux,arm LDFLAGS: -ludt_LINUX_ARM
-//
 // #include "udt_c.h"
 // #include <errno.h>
 // #include <arpa/inet.h>

@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	udt "github.com/fffw/go-udtwrapper"
+	udt "github.com/Syncbak-Git/udtwrapper"
 	"io"
 	"io/ioutil"
 	"net"
@@ -22,8 +22,8 @@ var Usage = func() {
 
 Usage:
 
-  server: %s -s<udt address> <tcp address>
-  benchmarker:   %s [udt | tcp] <remote address>
+  server: %s -s <udt_address> <tcp_address>
+  benchmarker:   %s [-udt | -tcp] <remote_address>
 
 Address format is Go's: [host]:port
 `
@@ -138,34 +138,40 @@ func Listen(udtAddr string, tcpAddr string, bs int64) error {
 	}
 	log("tcp listening at %s", tcp.Addr())
 
-	done := make(chan interface{}, 2)
+	done := make(chan interface{})
+	defer close(done)
 	run := func(l net.Listener) (err error) {
 		for {
-			var c net.Conn
-			c, err = l.Accept()
-			if err != nil {
+			select {
+			case <-done:
 				return
-			}
-			log("accepted connection from %s", c.RemoteAddr())
-
-			go func() {
-				defer c.Close()
-				for {
-					select {
-					case <-done:
-						return
-					default:
-						n, e := io.CopyN(c, c, bs)
-						if e == io.EOF {
-							log("read EOF, close client socket")
-							return
-						}
-						log("Copied back %d bytes", n)
-					}
+			default:
+				var c net.Conn
+				c, err = l.Accept()
+				if err != nil {
+					return
 				}
+				log("accepted connection from %s", c.RemoteAddr())
 
-				return
-			}()
+				go func() {
+					defer c.Close()
+					for {
+						select {
+						case <-done:
+							return
+						default:
+							n, e := io.CopyN(c, c, bs)
+							if e == io.EOF {
+								log("read EOF, close client socket")
+								return
+							}
+							log("Copied back %d bytes", n)
+						}
+					}
+
+					return
+				}()
+			}
 		}
 	}
 
@@ -177,7 +183,6 @@ func Listen(udtAddr string, tcpAddr string, bs int64) error {
 		syscall.SIGTERM, syscall.SIGQUIT)
 	<-sigc
 	fmt.Println("Quit now")
-	done <- nil
 	return nil
 }
 
@@ -200,14 +205,16 @@ func Dial(network, remoteAddr string) (c net.Conn, err error) {
 
 func benchmark(c net.Conn, bs int64) (err error) {
 	defer c.Close()
-	rand, err := os.Open("/dev/zero")
+	rand, err := os.Open("/dev/urandom")
 	if err != nil {
 		return
 	}
 	log("piping random to connection")
 
 	stopSend := make(chan interface{})
+	defer close(stopSend)
 	stopRecv := make(chan interface{})
+	defer close(stopRecv)
 	var sent, recved int64
 	startTime := time.Now()
 
@@ -255,8 +262,6 @@ func benchmark(c net.Conn, bs int64) (err error) {
 		syscall.SIGTERM, syscall.SIGQUIT)
 	<-sigc
 	fmt.Println("Quit now, final result:")
-	stopSend <- nil
-	stopRecv <- nil
 	reportStat("Sent", sent)
 	reportStat("Recv", recved)
 	return
