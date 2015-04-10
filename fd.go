@@ -285,15 +285,27 @@ func (fd *udtFD) RemoteAddr() net.Addr {
 }
 
 func (fd *udtFD) SetDeadline(t time.Time) error {
-	panic("not yet implemented")
+	err := fd.SetReadDeadline(t)
+	if err != nil {
+		return err
+	}
+	return fd.SetWriteDeadline(t)
 }
 
 func (fd *udtFD) SetReadDeadline(t time.Time) error {
-	panic("not yet implemented")
+	d := C.int(t.Sub(time.Now()).Nanoseconds() / 1e6)
+	if C.udt_setsockopt(fd.sock, 0, C.UDT_RCVTIMEO, unsafe.Pointer(&d), C.sizeof_int) != 0 {
+		return fmt.Errorf("failed to set ReadDeadline: %s", lastError())
+	}
+	return nil
 }
 
 func (fd *udtFD) SetWriteDeadline(t time.Time) error {
-	panic("not yet implemented")
+	d := C.int(t.Sub(time.Now()).Nanoseconds() / 1e6)
+	if C.udt_setsockopt(fd.sock, 0, C.UDT_SNDTIMEO, unsafe.Pointer(&d), C.sizeof_int) != 0 {
+		return fmt.Errorf("failed to set WriteDeadline: %s", lastError())
+	}
+	return nil
 }
 
 // lastError returns the last error as a Go string.
