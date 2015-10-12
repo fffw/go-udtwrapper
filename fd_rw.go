@@ -134,7 +134,7 @@ func (fd *udtFD) Read(buf []byte) (readcnt int, err error) {
 		break // return the data we have.
 	}
 	if err != nil && err != io.EOF {
-		err = &net.OpError{"read", fd.net, fd.laddr, err}
+		err = &net.OpError{"read", fd.net, fd.laddr, fd.raddr, err}
 	}
 	return readcnt, err
 }
@@ -174,7 +174,7 @@ func (fd *udtFD) Write(buf []byte) (writecnt int, err error) {
 		}
 	}
 	if err != nil {
-		err = &net.OpError{"write", fd.net, fd.raddr, err}
+		err = &net.OpError{"write", fd.net, fd.laddr, fd.raddr, err}
 	}
 	return writecnt, err
 }
