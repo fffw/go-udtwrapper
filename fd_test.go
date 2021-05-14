@@ -5,19 +5,20 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"syscall"
 	"testing"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 func TestSocketConstruct(t *testing.T) {
-	if _, err := socket(syscall.AF_INET); err != nil {
+	if _, err := socket(unix.AF_INET); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestSocketClose(t *testing.T) {
-	s, err := socket(syscall.AF_INET)
+	s, err := socket(unix.AF_INET)
 	assert(t, nil == err, err)
 
 	if int(s) <= 0 {
@@ -408,7 +409,7 @@ func testSendToEcho(t *testing.T, conn net.Conn) {
 		}
 
 		if !bytes.Equal(buf, buf2) {
-			t.Fatal("bufs differ:\n\n%s\n\n%s", string(buf), string(buf2))
+			t.Fatalf("bufs differ:\n\n%s\n\n%s", string(buf), string(buf2))
 		}
 
 		fmt.Printf("ok\n")
