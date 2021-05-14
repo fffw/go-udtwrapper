@@ -5,22 +5,21 @@ import (
 	"fmt"
 	"net"
 	"runtime"
-	"syscall"
 	"time"
 	"unsafe"
 
 	ctxgrp "github.com/jbenet/go-ctxgroup"
+	"golang.org/x/sys/unix"
 )
 
-// #cgo CFLAGS: -Wall
+// #cgo linux CFLAGS: -DLINUX
+// #cgo darwin CFLAGS: -DOSX
+// #cgo freebsd CFLAGS: -DBSD
+// #cgo windows CFLAGS: -DERROR_NO_WINDOWS_SUPPORT
+// #cgo i386 CFLAGS: -DIA32
+// #cgo amd64 CFLAGS: -DAMD64
+// #cgo CFLAGS: -Wall -finline-functions -O3 -fno-strict-aliasing -fvisibility=hidden
 // #cgo LDFLAGS: -lstdc++ -lm
-// #cgo LDFLAGS: -L ${SRCDIR}
-// #cgo darwin,amd64 LDFLAGS: -ludt_MAC_AMD64
-// #cgo darwin,i386 LDFLAGS: -ludt_MAC_IA32
-// #cgo linux,amd64 LDFLAGS: -ludt_LINUX_AMD64
-// #cgo linux,i386 LDFLAGS: -ludt_LINUX_IA32
-// #cgo linux,arm LDFLAGS: -ludt_LINUX_ARM
-//
 // #include "udt_c.h"
 // #include <errno.h>
 // #include <arpa/inet.h>
@@ -121,7 +120,7 @@ func (fd *udtFD) connectionCheck(ctxgrp.ContextGroup) {
 
 // lastErrorOp returns the last error as a net.OpError.
 func (fd *udtFD) lastErrorOp(op string) *net.OpError {
-	return &net.OpError{op, fd.net, fd.laddr, lastError()}
+	return &net.OpError{op, fd.net, fd.laddr, fd.raddr, lastError()}
 }
 
 func (fd *udtFD) name() string {
@@ -214,11 +213,11 @@ func (fd *udtFD) accept() (*udtFD, error) {
 	}
 	defer fd.decref()
 
-	var sa syscall.RawSockaddrAny
+	var sa unix.RawSockaddrAny
 	var salen C.int
 
 	sock2 := C.udt_accept(fd.sock, (*C.struct_sockaddr)(unsafe.Pointer(&sa)), &salen)
-	if sock2 == C.INVALID_SOCK {
+	if sock2 == (C.UDTSOCKET)(C.INVALID_SOCK) {
 		err := fd.lastErrorOp("accept")
 		return nil, err
 	}
@@ -286,15 +285,27 @@ func (fd *udtFD) RemoteAddr() net.Addr {
 }
 
 func (fd *udtFD) SetDeadline(t time.Time) error {
-	panic("not yet implemented")
+	err := fd.SetReadDeadline(t)
+	if err != nil {
+		return err
+	}
+	return fd.SetWriteDeadline(t)
 }
 
 func (fd *udtFD) SetReadDeadline(t time.Time) error {
-	panic("not yet implemented")
+	d := C.int(t.Sub(time.Now()).Nanoseconds() / 1e6)
+	if C.udt_setsockopt(fd.sock, 0, C.UDT_RCVTIMEO, unsafe.Pointer(&d), C.sizeof_int) != 0 {
+		return fmt.Errorf("failed to set ReadDeadline: %s", lastError())
+	}
+	return nil
 }
 
 func (fd *udtFD) SetWriteDeadline(t time.Time) error {
-	panic("not yet implemented")
+	d := C.int(t.Sub(time.Now()).Nanoseconds() / 1e6)
+	if C.udt_setsockopt(fd.sock, 0, C.UDT_SNDTIMEO, unsafe.Pointer(&d), C.sizeof_int) != 0 {
+		return fmt.Errorf("failed to set WriteDeadline: %s", lastError())
+	}
+	return nil
 }
 
 // lastError returns the last error as a Go string.
@@ -305,8 +316,8 @@ func lastError() error {
 func socket(addrfamily int) (sock C.UDTSOCKET, reterr error) {
 
 	sock = C.udt_socket(C.int(addrfamily), C.SOCK_STREAM, 0)
-	if sock == C.INVALID_SOCK {
-		return C.INVALID_SOCK, fmt.Errorf("invalid socket: %s", lastError())
+	if sock == (C.UDTSOCKET)(C.INVALID_SOCK) {
+		return (C.UDTSOCKET)(C.INVALID_SOCK), fmt.Errorf("invalid socket: %s", lastError())
 	}
 
 	return sock, nil
@@ -323,11 +334,11 @@ func closeSocket(sock C.UDTSOCKET) error {
 func dialFD(laddr, raddr *UDTAddr) (*udtFD, error) {
 
 	if raddr == nil {
-		return nil, &net.OpError{"dial", "udt", raddr, errors.New("invalid remote address")}
+		return nil, &net.OpError{"dial", "udt", laddr, raddr, errors.New("invalid remote address")}
 	}
 
 	if laddr != nil && laddr.AF() != raddr.AF() {
-		return nil, &net.OpError{"dial", "udt", raddr, errors.New("differing remote address network")}
+		return nil, &net.OpError{"dial", "udt", laddr, raddr, errors.New("differing remote address network")}
 	}
 
 	sock, err := socket(raddr.AF())
@@ -365,7 +376,7 @@ func dialFD(laddr, raddr *UDTAddr) (*udtFD, error) {
 func listenFD(laddr *UDTAddr) (*udtFD, error) {
 
 	if laddr == nil {
-		return nil, &net.OpError{"dial", "udt", nil, errors.New("invalid address")}
+		return nil, &net.OpError{"dial", "udt", nil, nil, errors.New("invalid address")}
 	}
 
 	sock, err := socket(laddr.AF())
@@ -390,7 +401,7 @@ func listenFD(laddr *UDTAddr) (*udtFD, error) {
 	}
 
 	// TODO: use maxListenerBacklog like golang.org/net/
-	if err := fd.listen(syscall.SOMAXCONN); err != nil {
+	if err := fd.listen(unix.SOMAXCONN); err != nil {
 		fd.Close()
 		return nil, err
 	}

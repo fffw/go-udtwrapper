@@ -1,0 +1,18 @@
+{
+	"ImportPath": "github.com/Syncbak-Git/udtwrapper",
+	"GoVersion": "go1.4.2",
+	"Deps": [
+		{
+			"ImportPath": "github.com/jbenet/go-ctxgroup",
+			"Rev": "c14598396fa31465dc558b176c7976606f95a49d"
+		},
+		{
+			"ImportPath": "github.com/jbenet/go-sockaddr",
+			"Rev": "da304f94eea1af8ba8d1faf184623e1f9d9777dc"
+		},
+		{
+			"ImportPath": "golang.org/x/net/context",
+			"Rev": "84ba27dd5b2d8135e9da1395277f2c9333a2ffda"
+		}
+	]
+}

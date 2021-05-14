@@ -6,9 +6,14 @@ import (
 	"unsafe"
 )
 
-// #cgo CFLAGS: -Wall
-// #cgo LDFLAGS: -lstdc++
-//
+// #cgo linux CFLAGS: -DLINUX
+// #cgo darwin CFLAGS: -DOSX
+// #cgo freebsd CFLAGS: -DBSD
+// #cgo windows CFLAGS: -DERROR_NO_WINDOWS_SUPPORT
+// #cgo i386 CFLAGS: -DIA32
+// #cgo amd64 CFLAGS: -DAMD64
+// #cgo CFLAGS: -Wall -finline-functions -O3 -fno-strict-aliasing -fvisibility=hidden
+// #cgo LDFLAGS: -lstdc++ -lm
 // #include "udt_c.h"
 // #include <errno.h>
 // #include <arpa/inet.h>
@@ -129,7 +134,7 @@ func (fd *udtFD) Read(buf []byte) (readcnt int, err error) {
 		break // return the data we have.
 	}
 	if err != nil && err != io.EOF {
-		err = &net.OpError{"read", fd.net, fd.laddr, err}
+		err = &net.OpError{"read", fd.net, fd.laddr, fd.raddr, err}
 	}
 	return readcnt, err
 }
@@ -169,7 +174,7 @@ func (fd *udtFD) Write(buf []byte) (writecnt int, err error) {
 		}
 	}
 	if err != nil {
-		err = &net.OpError{"write", fd.net, fd.raddr, err}
+		err = &net.OpError{"write", fd.net, fd.laddr, fd.raddr, err}
 	}
 	return writecnt, err
 }

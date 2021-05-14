@@ -3,10 +3,10 @@ package udt
 import (
 	"fmt"
 	"net"
-	"syscall"
 
 	sockaddr "github.com/jbenet/go-sockaddr"
 	sockaddrnet "github.com/jbenet/go-sockaddr/net"
+	"golang.org/x/sys/unix"
 )
 
 type UDTAddr struct {
@@ -42,8 +42,8 @@ func (a *UDTAddr) copy() *UDTAddr {
 // AF returns UDTAddr's AF (Address Family)
 func (a *UDTAddr) AF() int {
 	af := sockaddrnet.NetAddrAF(a.addr)
-	if af == syscall.AF_UNSPEC {
-		af = syscall.AF_INET
+	if af == unix.AF_UNSPEC {
+		af = unix.AF_INET
 	}
 	return af
 }
@@ -83,22 +83,22 @@ func WrapUDPAddr(ua *net.UDPAddr) *UDTAddr {
 }
 
 // sockArgs returns (AF, *RawSockaddrAny, error)
-func (a *UDTAddr) socketArgs() (int, *syscall.RawSockaddrAny, sockaddr.Socklen, error) {
+func (a *UDTAddr) socketArgs() (int, *unix.RawSockaddrAny, sockaddr.Socklen, error) {
 	af := a.AF()
 	sa := sockaddrnet.NetAddrToSockaddr(a.addr)
 	if sa == nil {
-		return 0, nil, 0, fmt.Errorf("could not convert UDPAddr to syscall.Sockaddr")
+		return 0, nil, 0, fmt.Errorf("could not convert UDPAddr to unix.Sockaddr")
 	}
 
 	rsa, salen, err := sockaddr.SockaddrToAny(sa)
 	if err != nil {
-		return 0, nil, 0, fmt.Errorf("could not convert syscall.Sockaddr to syscall.RawSockaddrAny")
+		return 0, nil, 0, fmt.Errorf("could not convert unix.Sockaddr to unix.RawSockaddrAny")
 	}
 
 	return af, rsa, salen, nil
 }
 
-func addrWithSockaddr(rsa *syscall.RawSockaddrAny) (*UDTAddr, error) {
+func addrWithSockaddr(rsa *unix.RawSockaddrAny) (*UDTAddr, error) {
 	sa, err := sockaddr.AnyToSockaddr(rsa)
 	if err != nil {
 		return nil, err
@@ -106,7 +106,7 @@ func addrWithSockaddr(rsa *syscall.RawSockaddrAny) (*UDTAddr, error) {
 
 	udpaddr := sockaddrnet.SockaddrToUDPAddr(sa)
 	if udpaddr == nil {
-		return nil, fmt.Errorf("could not convert syscall.Sockaddr to UDPAddr")
+		return nil, fmt.Errorf("could not convert unix.Sockaddr to UDPAddr")
 	}
 	return &UDTAddr{addr: udpaddr}, nil
 }

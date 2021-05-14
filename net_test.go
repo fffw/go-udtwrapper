@@ -13,11 +13,11 @@ func TestResolveUDTAddr(t *testing.T) {
 	}
 
 	if a.Network() != "udt" {
-		t.Fatal("addr resolved incorrectly: %s", a.Network())
+		t.Fatalf("addr resolved incorrectly: %s", a.Network())
 	}
 
 	if a.String() != ":1234" {
-		t.Fatal("addr resolved incorrectly: %s", a)
+		t.Fatalf("addr resolved incorrectly: %s", a)
 	}
 }
 
